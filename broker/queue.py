@@ -4,7 +4,9 @@ import uuid
 from datetime import datetime
 
 class TaskQueue:
-    def __init__(self, host='localhost', port=6379):
+    def __init__(self, host=None, port=6379):
+        import os
+        host = host or os.environ.get('REDIS_HOST', 'localhost')
         self.redis = redis.Redis(host=host, port=port, decode_responses=True)
         self.queue_key = "tasks:pending"
         self.processing_key = "tasks:processing"
@@ -23,10 +25,13 @@ class TaskQueue:
         return task["id"]
 
     def dequeue(self, worker_id):
-        task_json = self.redis.brpoplpush(
+        task_json = self.redis.execute_command(
+            'BLMOVE',
             self.queue_key,
             f"{self.processing_key}:{worker_id}",
-            timeout=5
+            'RIGHT',
+            'LEFT',
+            5
         )
         if task_json:
             task = json.loads(task_json)

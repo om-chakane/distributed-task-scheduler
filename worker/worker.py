@@ -14,14 +14,19 @@ class Worker:
 
     def run(self):
         while self.running:
-            task = self.queue.dequeue(self.worker_id)
-            if task:
-                try:
-                    result = process_task(task["id"], task["data"])
-                    self.queue.complete(self.worker_id, task)
-                except Exception as e:
-                    print(f"[Worker {self.worker_id}] Task failed: {e}")
-                    self.queue.fail(self.worker_id, task, e)
+            try:
+                task = self.queue.dequeue(self.worker_id)
+                if task:
+                    try:
+                        result = process_task(task["id"], task["data"])
+                        self.queue.complete(self.worker_id, task)
+                    except Exception as e:
+                        print(f"[Worker {self.worker_id}] Task failed: {e}")
+                        self.queue.fail(self.worker_id, task, e)
+            except Exception as e:
+                print(f"[Worker {self.worker_id}] Connection error, retrying: {e}")
+                import time
+                time.sleep(2)
 
 if __name__ == "__main__":
     worker_id = sys.argv[1] if len(sys.argv) > 1 else "worker-1"
